@@ -1,0 +1,101 @@
+.parent-div {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: .5rem;
+    margin-top: 48px
+}
+
+.canvas-container {
+    background-color: skyblue;
+    width: 512px;
+    height: 512px;
+}
+
+.mapBox-container-1 {
+    height: 512px;
+    width: 512px;
+}
+.mapBoxGl1-wrapper {
+    position: relative;
+}
+
+.sidebar {
+    background-color: rgb(35 55 75 / 90%);
+    color: #fff;
+    padding: 6px 12px;
+    font-family: monospace;
+    top: 0;
+    left: 0;
+    margin: 12px;
+    border-radius: 4px;
+    }
+
+#map, .mapBox-container-1 {
+    width: 50vw !important;
+    height: 50vh !important;
+  }
+  
+  .sim-controls {
+    width: 270px;
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    border: 2px solid black;
+    padding: 8px;
+    
+    > h3 {
+        text-align: left;
+        font-weight: bold;
+        font-size: 1rem;
+    }
+  }
+  
+  .label-control-pair {
+    display: flex;
+    flex-direction: row;
+    gap: .25rem;
+    > label:nth-child(1) {
+        text-align: left;
+        width: 80px;
+        flex-shrink: 0;
+        flex-grow: 1;
+        font-weight: 600;
+    }
+    > label:nth-child(2) {
+        flex-grow: 0;
+        flex-shrink: 1;
+    }
+    > input {
+        border: 1px solid black;
+        flex-shrink: 1;
+        flex-grow: 0;
+        padding: 0rem .75rem;
+        font-weight: 600;
+        font-family: 'Courier New', Courier, monospace;
+    }
+    > .reset-button-label {
+        flex-grow: 0 !important;
+      }
+  }
+  
+  .label-control-pair.reset-button-pair {
+    button {
+        flex-grow: 1;
+    }
+    
+  }
+  
+  .label-control-pair.empty-label-margin-right {
+    > label:nth-child(3) {
+        margin-right: 8px;
+    }
+  }
+  
+  .label-control-pair.altitude-pair {
+    > label:nth-child(3) {
+        font-size: 1.5rem;
+        margin: -2px 0px;
+    }
+  }
