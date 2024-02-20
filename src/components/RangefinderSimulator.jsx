@@ -196,7 +196,7 @@ export default function RangefinderSimulator() {
         'maxzoom': 14
       });
       // add the DEM source as a terrain layer with exaggerated height
-      initMap.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 0 }); // 'exaggeration': 1.5
+      initMap.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 }); // 'exaggeration': 1.5
 
       var calcCoords = calculateDestination(37.701857, -122.450648, 0, rangefinderMaxRange)
       initMap.addSource('lineSource', {
