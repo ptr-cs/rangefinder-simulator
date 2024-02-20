@@ -18,11 +18,11 @@ export default function RangefinderSimulator() {
   const [lineSourceData, setLineSourceData] = useState({
     type: 'Feature',
     geometry: {
-        type: 'LineString',
-        properties: {},
-        coordinates: [[-122.450648, 37.701857], [-122.439287109375, 37.701857]] // Example coordinates
+      type: 'LineString',
+      properties: {},
+      coordinates: [[-122.450648, 37.701857], [-122.439287109375, 37.701857]]
     }
-});
+  });
 
   const MAP_INITIAL_CENTER = { lat: 37.701857, lng: -122.450648 }
   const MAP_INITIAL_ZOOM = 15
@@ -66,17 +66,17 @@ export default function RangefinderSimulator() {
   const setMapBearingInputDebounced = useRef(_.debounce(setMapBearing, 10));
 
   mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
-  
+
   // Function to update line position
   const updateLinePosition = (newLinePosition) => {
-      setLineSourceData({
-          type: 'Feature',
-          properties: {},
-          geometry: {
-              type: 'LineString',
-              coordinates: newLinePosition
-          }
-      });
+    setLineSourceData({
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'LineString',
+        coordinates: newLinePosition
+      }
+    });
   };
 
   const onDraggedObject = (e) => {
@@ -116,24 +116,19 @@ export default function RangefinderSimulator() {
     // Convert coordinates to Threebox world positions
     const startPos = tb.projectToWorld(startCoord);
     const endPos = tb.projectToWorld(endCoord);
-
-
+    
     const points = [];
     points.push(new THREE.Vector3(startPos.x, startPos.y, startPos.z));
     points.push(new THREE.Vector3(endPos.x, endPos.y, endPos.z));
-    // console.log("startPos")
-    // console.log(startPos.x, startPos.y, startPos.z)
-    // console.log('endPos')
-    // console.log(endPos.x, endPos.y, endPos.z)
+    
     // Create a geometry for the line
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
     // Create a material for the line
-    const material = new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: .5  });
+    const material = new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: .5 });
 
     // Create the line using the geometry and material
     const line = new THREE.Line(geometry, material);
-    console.log(line)
 
     setLaser(line)
 
@@ -194,31 +189,31 @@ export default function RangefinderSimulator() {
       );
 
 
-      // initMap.addSource('mapbox-dem', {
-      //   'type': 'raster-dem',
-      //   'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
-      //   'tileSize': 512,
-      //   'maxzoom': 14
-      // });
-      // // add the DEM source as a terrain layer with exaggerated height
-      // initMap.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
+      initMap.addSource('mapbox-dem', {
+        'type': 'raster-dem',
+        'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+        'tileSize': 512,
+        'maxzoom': 14
+      });
+      // add the DEM source as a terrain layer with exaggerated height
+      initMap.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 0 }); // 'exaggeration': 1.5
 
-        var calcCoords = calculateDestination(37.701857,-122.450648, 0, rangefinderMaxRange)
-        initMap.addSource('lineSource', {
-          'type': 'geojson',
-          'data': lineSourceData
+      var calcCoords = calculateDestination(37.701857, -122.450648, 0, rangefinderMaxRange)
+      initMap.addSource('lineSource', {
+        'type': 'geojson',
+        'data': lineSourceData
       });
 
       // Add a layer to visualize the line
       initMap.addLayer({
-          'id': 'lineLayer',
-          'type': 'line',
-          'source': 'lineSource',
-          'layout': {},
-          'paint': {
-              'line-width': 8,
-              'line-color': '#007cbf' // Line color
-          }
+        'id': 'lineLayer',
+        'type': 'line',
+        'source': 'lineSource',
+        'layout': {},
+        'paint': {
+          'line-width': 8,
+          'line-color': '#007cbf' // Line color
+        }
       });
 
       initMap.addLayer({
@@ -244,8 +239,6 @@ export default function RangefinderSimulator() {
             model.addTooltip("Rangefinder", true);
             tb.add(model);
             model.addEventListener('ObjectDragged', onDraggedObject, false);
-            console.log('model')
-            console.log(model)
             setRangefinder(model)
           });
         },
@@ -271,34 +264,10 @@ export default function RangefinderSimulator() {
       setMapZoomDebounced.current(initMap.getZoom().toFixed(6));
     })
 
-    console.log(initMap)
     setMap(initMap);
 
     return () => initMap.remove();
   }, []);
-
-  function rotateLine(point1, point2, angle) {
-    // Convert the angle from degrees to radians
-    const angleRadians = THREE.MathUtils.degToRad(angle);
-
-    // Calculate the direction vector from point1 to point2
-    const direction = new THREE.Vector3().subVectors(point2, point1);
-
-    // Create a rotation axis (for rotation in the XY plane, the axis is the Z axis)
-    const rotationAxis = new THREE.Vector3(0, 0, 1);
-
-    // Create a rotation matrix
-    const rotationMatrix = new THREE.Matrix4();
-    rotationMatrix.makeRotationAxis(rotationAxis.normalize(), angleRadians);
-
-    // Apply the rotation matrix to the direction vector
-    direction.applyMatrix4(rotationMatrix);
-
-    // Update point2 by adding the rotated direction vector to point1
-    const rotatedPoint2 = new THREE.Vector3().addVectors(point1, direction);
-
-    return [point1, rotatedPoint2]; // Return the original and the rotated point
-  }
 
   function calculateDestination(lat, lon, bearing, distance) {
     const R = 6371e3; // Earth's radius in meters
@@ -319,11 +288,11 @@ export default function RangefinderSimulator() {
 
     return { lat: latEnd, lon: lonEnd };
   }
-  
+
   // Function to check if a point lies within a bounding box
   function isPointInsideBoundingBox(point, bounds) {
     return point.x >= bounds.min.x && point.x <= bounds.max.x &&
-          point.y >= bounds.min.y && point.y <= bounds.max.y;
+      point.y >= bounds.min.y && point.y <= bounds.max.y;
   }
 
   // Function to calculate intersection point of two line segments
@@ -332,7 +301,7 @@ export default function RangefinderSimulator() {
 
     // If the two lines are parallel (denominator close to 0), there is no intersection
     if (denominator === 0) {
-        return null;
+      return null;
     }
 
     const ua = (((segmentEnd.x - segmentStart.x) * (lineStart.y - segmentStart.y)) - ((segmentEnd.y - segmentStart.y) * (lineStart.x - segmentStart.x))) / denominator;
@@ -340,70 +309,53 @@ export default function RangefinderSimulator() {
 
     // If both ua and ub are between 0 and 1, the intersection point is within both line segments
     if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
-        const x = lineStart.x + (ua * (lineEnd.x - lineStart.x));
-        const y = lineStart.y + (ua * (lineEnd.y - lineStart.y));
-        return new THREE.Vector2(x, y);
+      const x = lineStart.x + (ua * (lineEnd.x - lineStart.x));
+      const y = lineStart.y + (ua * (lineEnd.y - lineStart.y));
+      return new THREE.Vector2(x, y);
     }
 
     return null; // No intersection
   }
+  
+    /**
+   * Clips a 3D line below a certain elevation, making the below-ground part invisible.
+   * @param {THREE.BufferGeometry} geometry - The geometry representing the 3D line.
+   * @param {number} groundLevel - The elevation at which the ground intersects the line.
+   * @returns {THREE.BufferGeometry} A new geometry representing the clipped line.
+   */
+  function clipLineAtGroundLevel(geometry, groundLevel) {
+    const vertices = geometry.getAttribute('position').array;
+    const newVertices = [];
+    let isAboveGround = vertices[2] > groundLevel;
 
-  // Function to calculate intersection between line and map
-  function calculateLineMapIntersection(lineStart, lineEnd, map, threebox) {
-    
-    // Project 3D line onto the 2D plane of the map
-    const start = threebox.unprojectFromWorld(lineStart);
-    const end = threebox.unprojectFromWorld(lineEnd);
-    // console.log("calculateLineMapIntersection start / end")
-    // console.log(start)
-    // console.log(end)
-
-    // Create a line segment using projected points
-    const lineSegment = [start, end];
-
-    // Get map bounds in screen coordinates
-    const bounds = map.getContainer().getBoundingClientRect();
-    const mapBounds = {
-        min: new THREE.Vector2(bounds.left, bounds.top),
-        max: new THREE.Vector2(bounds.right, bounds.bottom)
-    };
-
-    console.log("end line coords")
-    console.log([lineEnd.x, lineEnd.y])
-    // Iterate through each feature in the map
-    const features = map.queryRenderedFeatures([lineEnd.x, lineEnd.y], { layers: ['add-3d-buildings'] }); // Replace 'your-layer-name' with the name of your map layer
-    console.log("features")
-    console.log(features)
-    for (const feature of features) {
-        // Get the geometry of the feature
-        const geometry = feature.geometry;
-
-        // Iterate through each segment of the geometry
-        for (let i = 0; i < geometry.coordinates.length - 1; i++) {
-            for (let j = 0; j < geometry.coordinates[i].length - 1; ++j) {
-              // Project each segment onto the screen
-              const segmentStart = threebox.projectToWorld(geometry.coordinates[i][j]);
-              const segmentEnd = threebox.projectToWorld(geometry.coordinates[i][j+1]);
-
-              // Check if the line segment intersects with the projected segment
-              const intersection = calculateIntersection(lineSegment[0], lineSegment[1], segmentStart, segmentEnd);
-              if (intersection && isPointInsideBoundingBox(intersection, mapBounds)) {
-                  // Convert intersection point back to geographical coordinates
-                  const lngLat = threebox.unprojectFromWorld(intersection);
-                  return { lng: lngLat.lng, lat: lngLat.lat };
-              }
-            }
+    for (let i = 0; i < vertices.length; i += 3) {
+      // Check if the current point is above the ground
+      if (vertices[i + 2] > groundLevel) {
+        if (!isAboveGround) {
+          // Calculate and add the intersection point with the ground
+          // Note: This is a simplification. You'd need to interpolate the actual intersection point.
+          newVertices.push(vertices[i], vertices[i + 1], groundLevel);
         }
+        newVertices.push(vertices[i], vertices[i + 1], vertices[i + 2]);
+        isAboveGround = true;
+      } else {
+        if (isAboveGround && i > 0) {
+          // Calculate and add the intersection point with the ground
+          // Note: This is a simplification. You'd need to interpolate the actual intersection point.
+          newVertices.push(vertices[i - 3], vertices[i - 2], groundLevel);
+        }
+        isAboveGround = false;
+      }
     }
 
-    // No intersection found
-    return null;
+    // Create a new geometry with the clipped vertices
+    const newGeometry = new THREE.BufferGeometry();
+    newGeometry.setAttribute('position', new THREE.Float32BufferAttribute(newVertices, 3));
+    return newGeometry;
   }
 
   const handleMapCenterInputChange = (e) => {
-    console.log("handleMapCenterInputChange")
     const { name, value } = e.target;
-    console.log(e.target)
     if (isNaN(value))
       return
     setMapCenterInputDebounced.current((prevCenter) => ({
@@ -413,81 +365,60 @@ export default function RangefinderSimulator() {
   };
 
   const handleMapZoomInputChange = (e) => {
-    console.log("handleMapZoomInputChange")
-    console.log(e.target.value)
     if (isNaN(e.target.value))
       return
     setMapZoomInputDebounced.current(parseFloat(e.target.value).toFixed(6));
   };
 
   const handleMapPitchInputChange = (e) => {
-    console.log("handleMapPitchInputChange")
-    console.log(e.target.value)
     if (isNaN(e.target.value))
       return
     setMapPitchInputDebounced.current(parseFloat(e.target.value).toFixed(6));
   };
 
   const handleMapBearingInputChange = (e) => {
-    console.log("handleMapBearingInputChange")
-    console.log(e.target.value)
     if (isNaN(e.target.value))
       return
     setMapBearingInputDebounced.current(parseFloat(e.target.value).toFixed(6));
   };
 
   const handleRangefinderCoordsInputChangeLat = (e) => {
-    console.log("handleRangefinderCoordsInputChange")
-    console.log(e)
-    console.log(e.target.value)
     if (isNaN(e.target.value))
       return
     setRangefinderCoords([rangefinderCoords[0], Number(parseFloat(e.target.value).toFixed(6)), rangefinderCoords[2]]);
   };
 
   const handleRangefinderCoordsInputChangeLng = (e) => {
-    console.log("handleRangefinderCoordsInputChange")
-    console.log(e.target.value)
     if (isNaN(e.target.value))
       return
     setRangefinderCoords([Number(parseFloat(e.target.value).toFixed(6)), rangefinderCoords[1], rangefinderCoords[2]]);
   };
 
   const handleRangefinderCoordsInputChangeAlt = (e) => {
-    console.log("handleRangefinderCoordsInputChange")
-    console.log(e.target.value)
     if (isNaN(e.target.value))
       return
     setRangefinderCoords([rangefinderCoords[0], rangefinderCoords[1], Number(parseFloat(e.target.value).toFixed(6))]);
   };
 
   const handleRangefinderRotationInputChangeX = (e) => {
-    console.log("handleRangefinderRotationInputChangeZ")
-    console.log(e.target.value)
     if (isNaN(e.target.value))
       return
     setRangefinderRotation({ x: parseFloat(e.target.value).toFixed(6), y: rangefinderRotation.y, z: rangefinderRotation.z });
   };
 
   const handleRangefinderRotationInputChangeY = (e) => {
-    console.log("handleRangefinderRotationInputChangeZ")
-    console.log(e.target.value)
     if (isNaN(e.target.value))
       return
     setRangefinderRotation({ x: rangefinderRotation.x, y: parseFloat(e.target.value).toFixed(6), z: rangefinderRotation.z });
   };
 
   const handleRangefinderRotationInputChangeZ = (e) => {
-    console.log("handleRangefinderRotationInputChangeZ")
-    console.log(e.target.value)
     if (isNaN(e.target.value))
       return
     setRangefinderRotation({ x: rangefinderRotation.x, y: rangefinderRotation.y, z: parseFloat(e.target.value).toFixed(6) });
   };
 
   const handleRangefinderRangeInputChange = (e) => {
-    console.log("handleRangefinderRangeInputChange")
-    console.log(e.target.value)
     if (isNaN(e.target.value))
       return
     setRangefinderMaxRange(parseFloat(e.target.value).toFixed(6));
@@ -522,108 +453,59 @@ export default function RangefinderSimulator() {
       threebox.update();
     }
   };
-  
-  // Function to convert a THREE.Vector3 object to a coordinate object
-function vector3ToCoordinate(vector3, map) {
-  // Convert 3D point to geographical coordinates (latitude, longitude)
-  const lngLat = map.unproject([vector3.x, vector3.y]);
-  
-  // Get altitude (height above sea level) in meters
-  const altitude = vector3.z;
 
-  // Return coordinate object with latitude, longitude, and altitude
-  return {
-      latitude: lngLat.lat,
-      longitude: lngLat.lng,
-      altitude: altitude
-  };
-}
+  // Function to get vertices from a THREE.BufferGeometry() object
+  function getVerticesFromBufferGeometry(bufferGeometry) {
+    const vertices = [];
 
-// Function to convert a THREE.BufferGeometry() to coordinates array
-function bufferGeometryToCoordinates(bufferGeometry, map) {
-  const vertices = bufferGeometry.attributes.position.array;
-  const coordinates = [];
+    // Get position attribute from buffer geometry
+    const positions = bufferGeometry.attributes.position.array;
 
-  // Iterate over vertices and convert each to coordinates
-  for (let i = 0; i < vertices.length; i += 3) {
-      const x = vertices[i];
-      const y = vertices[i + 1];
-      const z = vertices[i + 2];
-
-      // Convert vertex to coordinate object
-      const coordinate = vector3ToCoordinate(new THREE.Vector3(x, y, z), map);
-      coordinates.push(coordinate);
-  }
-
-  return coordinates;
-}
-
-// Function to get vertices from a THREE.BufferGeometry() object
-function getVerticesFromBufferGeometry(bufferGeometry) {
-  const vertices = [];
-
-  // Get position attribute from buffer geometry
-  const positions = bufferGeometry.attributes.position.array;
-
-  // Iterate over position attribute to extract vertices
-  for (let i = 0; i < positions.length; i += 3) {
+    // Iterate over position attribute to extract vertices
+    for (let i = 0; i < positions.length; i += 3) {
       const x = positions[i];
       const y = positions[i + 1];
       const z = positions[i + 2];
       vertices.push(new THREE.Vector3(x, y, z));
+    }
+
+    return vertices;
   }
 
-  return vertices;
-}
+  // Function to calculate the angle between two points in radians
+  function calculateAltitudeAngle(point1, point2) {
+    // Calculate the altitude difference between the two points
+    const altitudeDifference = Math.abs(point2.altitude - point1.altitude);
 
-// Function to calculate the angle between two points in radians
-function calculateAltitudeAngle(point1, point2) {
-  // Calculate the altitude difference between the two points
-  const altitudeDifference = Math.abs(point2.altitude - point1.altitude);
+    // Calculate the distance between the two points in meters
+    const lat1 = point1.lat * Math.PI / 180.0;
+    const lat2 = point2.lat * Math.PI / 180.0;
+    const lon1 = point1.lng * Math.PI / 180.0;
+    const lon2 = point2.lng * Math.PI / 180.0;
+    const R = 6371000; // Earth radius in meters
+    const x = (lon2 - lon1) * Math.cos((lat1 + lat2) / 2);
+    const y = (lat2 - lat1);
+    const distance = Math.sqrt(x * x + y * y) * R;
 
-  // Calculate the distance between the two points in meters
-  const lat1 = point1.lat * Math.PI / 180.0;
-  const lat2 = point2.lat * Math.PI / 180.0;
-  const lon1 = point1.lng * Math.PI / 180.0;
-  const lon2 = point2.lng * Math.PI / 180.0;
-  const R = 6371000; // Earth radius in meters
-  const x = (lon2 - lon1) * Math.cos((lat1 + lat2) / 2);
-  const y = (lat2 - lat1);
-  const distance = Math.sqrt(x * x + y * y) * R;
+    // Calculate the angle of altitude difference using trigonometry
+    const angleRadians = Math.atan(altitudeDifference / distance);
 
-  // Calculate the angle of altitude difference using trigonometry
-  const angleRadians = Math.atan(altitudeDifference / distance);
+    // Convert radians to degrees
+    const angleDegrees = angleRadians * 180.0 / Math.PI;
 
-  // Convert radians to degrees
-  const angleDegrees = angleRadians * 180.0 / Math.PI;
+    return angleDegrees;
+  }
 
-  return angleDegrees;
-}
-
-// Function to calculate the length of the hypotenuse
-function calculateHypotenuse(adjacent, thetaDegrees) {
-  // Convert angle from degrees to radians
-  const thetaRadians = thetaDegrees * (Math.PI / 180);
-
-  // Calculate the length of the hypotenuse using the cosine function
-  const hypotenuse = adjacent / Math.cos(thetaRadians);
-
-  return hypotenuse;
-}
-
-// Function to calculate the intersection point of line B through A
-function calculateIntersectionPoint(angleB, yOffsetB, length) {
-  // Convert angle from degrees to radians
-  const thetaRadians = angleB * (Math.PI / 180);
-
-  // Calculate the Y-coordinate of line A (same as starting position of line B on Y-axis)
-  const yA = yOffsetB;
-
-  // Calculate the X-coordinate of the intersection point on line B
-  const xIntersection = yA / Math.tan(thetaRadians);
-
-  return { x: xIntersection, y: 0 };
-}
+  // Function to calculate the intersection point of line B through A
+  function calculateIntersectionPoint(angleB, yOffsetB, length) {
+    // Convert angle from degrees to radians
+    const thetaRadians = angleB * (Math.PI / 180);
+    // Calculate the Y-coordinate of line A (same as starting position of line B on Y-axis)
+    const yA = yOffsetB;
+    // Calculate the X-coordinate of the intersection point on line B
+    const xIntersection = yA / Math.tan(thetaRadians);
+    return { x: xIntersection, y: 0 };
+  }
 
 
   useEffect(() => {
@@ -635,23 +517,12 @@ function calculateIntersectionPoint(angleB, yOffsetB, length) {
       const startCoord = rangefinderCoords
       const destination = calculateDestination(startCoord[1], startCoord[0], 0, rangefinderMaxRange);
       const endCoord = [destination.lon, destination.lat, rangefinderCoords[2]];
-
-      // console.log("pre rot start coord")
-      // console.log(startCoord)
-      // console.log("post rot start coord")
-      // console.log(endCoord)
       // Convert coordinates to Threebox world positions
       const startPos = threebox.projectToWorld(startCoord);
       const endPos = threebox.projectToWorld(endCoord);
-      // console.log("threebox projectToWorld")
-      // console.log(startPos)
-      // console.log(endPos)
-      const startPosMap = map.project(startCoord);
-      const endPosMap = map.project(endCoord);
-      // console.log("map projectToWorld")
-      // console.log(startPosMap)
-      // console.log(endPosMap)
-      const points = [];
+      // const startPosMap = map.project(startCoord);
+      // const endPosMap = map.project(endCoord);
+      // const points = [];
 
       var startPointVector = new THREE.Vector3(startPos.x, startPos.y, startPos.z)
       var endPointVector = new THREE.Vector3(endPos.x, endPos.y, endPos.z)
@@ -688,38 +559,24 @@ function calculateIntersectionPoint(angleB, yOffsetB, length) {
       rotatedVertices.forEach(vertex => vertex.applyMatrix4(inverseTranslationMatrix));
 
       laser.geometry.setFromPoints(rotatedVertices);
-      
+
       // Get vertices from buffer geometry
       const verticesFromGeometry = getVerticesFromBufferGeometry(laser.geometry);
-      console.log(verticesFromGeometry)
-      
+
       const start = threebox.unprojectFromWorld(verticesFromGeometry[0]);
       const end = threebox.unprojectFromWorld(verticesFromGeometry[1]);
-      console.log('line pos')
-      console.log(start)
-      console.log(end)
-      console.log('map line coords')
-      console.log(lineSourceData)
       updateLinePosition([[start[0], start[1]], [end[0], end[1]]])
-      console.log("angle")
-      var thetaAngleDegrees = calculateAltitudeAngle({lng: start[0], lat: start[1], altitude: start[2]}, {lng: end[0], lat: end[1], altitude: end[2]})
-      console.log(thetaAngleDegrees)
-      console.log("intersection")
+      var thetaAngleDegrees = calculateAltitudeAngle({ lng: start[0], lat: start[1], altitude: start[2] }, { lng: end[0], lat: end[1], altitude: end[2] })
       var intersection = calculateIntersectionPoint(thetaAngleDegrees, rangefinderCoords[2], rangefinderRange)
-      console.log(intersection.x / 3.281)
-      console.log("distance")
       const sideA = Math.pow(intersection.x, 2)
       const sideB = Math.pow(rangefinderCoords[2], 2)
       const hypotenuse = Math.sqrt(sideA + sideB)
-      console.log(hypotenuse)
       const roundedHypotenuse = parseFloat(hypotenuse).toFixed(6)
       if (roundedHypotenuse <= rangefinderMaxRange) {
         setRangefinderRange(roundedHypotenuse)
       } else {
         setRangefinderRange(0)
       }
-      
-
     }
   }, [rangefinderCoords, rangefinderRotation, rangefinderScale, rangefinderMaxRange]);
 
@@ -727,26 +584,18 @@ function calculateIntersectionPoint(angleB, yOffsetB, length) {
     if (map && lineSourceData) {
       try {
         map.getSource('lineSource').setData(lineSourceData);
-      } catch {}
-        
+      } catch { }
+
     }
   }, [lineSourceData]);
-  
+
   useEffect(() => {
-    console.log(debugCounter)
     if (map && !isNaN(mapCenter.lat) && !isNaN(mapCenter.lng) && !isNaN(mapZoom)
       && (prevMapZoom !== parseFloat(mapZoom).toFixed(6) ||
         prevMapCenter.lat !== parseFloat(mapCenter.lat).toFixed(6) ||
         prevMapCenter.lng !== parseFloat(mapCenter.lng).toFixed(6)) ||
-      prevMapPitch !== parseFloat(mapPitch).toFixed(6) ||
-      prevMapBearing !== parseFloat(mapBearing).toFixed(6)) {
-      // console.log("CURRENT:")
-      // console.log(mapCenter)
-      // console.log(mapZoom)
-      // console.log('PREVIOUS')
-      // console.log(prevMapCenter)
-      // console.log(prevMapZoom)
-      // console.log("----------------------")
+        prevMapPitch !== parseFloat(mapPitch).toFixed(6) ||
+        prevMapBearing !== parseFloat(mapBearing).toFixed(6)) {
       if (map !== null) {
         map.jumpTo({
           center: [parseFloat(mapCenter.lng).toFixed(6), parseFloat(mapCenter.lat).toFixed(6)],
