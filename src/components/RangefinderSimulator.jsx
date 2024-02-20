@@ -8,6 +8,8 @@ import "bootstrap/dist/css/bootstrap.css"
 import mapboxgl from '!mapbox-gl'; // eslint-disable-line import/no-webpack-loader-syntax
 import { Perf } from 'r3f-perf'
 import _, { range } from 'lodash'
+import { Vector3 } from 'threebox/src/three64';
+import * as turf from '@turf/turf'
 
 export default function RangefinderSimulator() {
   const mapContainerRef = useRef(null);
@@ -44,7 +46,7 @@ export default function RangefinderSimulator() {
   const RANGEFINDER_INITIAL_COORDS = [-122.450648, 37.701857, 500]
   const RANGEFINDER_INITIAL_ROTATION = { x: 0, y: 0, z: 0 }
   const RANGEFINDER_INITIAL_SCALE = 0.03
-  const RANGEFINDER_INITIAL_MAX_RANGE = 1000.0
+  const RANGEFINDER_INITIAL_MAX_RANGE = 10000.0
 
   const [rangefinderCoords, setRangefinderCoords] = useState(RANGEFINDER_INITIAL_COORDS);
   const [rangefinderRotation, setRangefinderRotation] = useState(RANGEFINDER_INITIAL_ROTATION);
@@ -55,6 +57,8 @@ export default function RangefinderSimulator() {
   const rangefinderRotationDebounced = useRef(_.debounce(setRangefinderRotation, 1));
 
   const [debugCounter, setDebugCounter] = useState(0);
+  
+  const setInterpolatedIntersectionDebounced = useRef(_.debounce(getInterpolatedIntersection, 100));
 
   const setMapCenterDebounced = useRef(_.debounce(setMapCenter, 250));
   const setMapCenterInputDebounced = useRef(_.debounce(setMapCenter, 10));
@@ -84,6 +88,8 @@ export default function RangefinderSimulator() {
     var newRotation = { x: (e.detail.draggedObject.rotation._x * (180 / Math.PI)).toFixed(6), y: (e.detail.draggedObject.rotation._y * (180 / Math.PI)).toFixed(6), z: (e.detail.draggedObject.rotation._z * (180 / Math.PI)).toFixed(6) }
     setRangefinderRotation(newRotation)
   }
+
+
 
   useEffect(() => {
     const initMap = new mapboxgl.Map({
@@ -204,17 +210,17 @@ export default function RangefinderSimulator() {
         'data': lineSourceData
       });
 
-      // Add a layer to visualize the line
-      initMap.addLayer({
-        'id': 'lineLayer',
-        'type': 'line',
-        'source': 'lineSource',
-        'layout': {},
-        'paint': {
-          'line-width': 8,
-          'line-color': '#007cbf' // Line color
-        }
-      });
+      // // Add a layer to visualize the line
+      // initMap.addLayer({
+      //   'id': 'lineLayer',
+      //   'type': 'line',
+      //   'source': 'lineSource',
+      //   'layout': {},
+      //   'paint': {
+      //     'line-width': 8,
+      //     'line-color': '#007cbf' // Line color
+      //   }
+      // });
 
       initMap.addLayer({
         id: 'custom-threebox-model',
@@ -347,11 +353,82 @@ export default function RangefinderSimulator() {
         isAboveGround = false;
       }
     }
-
     // Create a new geometry with the clipped vertices
     const newGeometry = new THREE.BufferGeometry();
     newGeometry.setAttribute('position', new THREE.Float32BufferAttribute(newVertices, 3));
     return newGeometry;
+  }
+  
+  // Function to convert Three.js coordinates to geographic coordinates
+  function convertToGeographicCoordinates(threeX, threeY, threeZ, threebox) {
+    // Conversion logic here. This will depend on your Three.js and Mapbox setup.
+    var lnglat = map.unproject([threeX, threeY, threeZ])
+    return { lat: lnglat.lat/* Latitude */, lng: lnglat.lng/* Longitude */, alt: threeZ/* Altitude in meters */ };
+  }
+  
+  // Function to sample elevation along a 3D line and identify intersection with terrain
+  function findTerrainIntersection(lat, lng, alt, map, threebox) {
+    // console.log("line lat/lng/alt")
+    // console.log(lat)
+    // console.log(lng)
+    // console.log(alt)
+    //const vertices = lineGeometry.getAttribute('position').array;
+    let intersectionPoint = null;
+
+    // Sample terrain elevation at the geographic coordinates
+    const terrainElevation = map.queryTerrainElevation([lng, lat], { exaggerated: true });
+
+    // Determine if the line segment intersects the terrain
+    if (alt <= terrainElevation) {
+      // The line has intersected the terrain. Calculate the exact intersection point if necessary.
+      // For simplicity, this example marks the first intersection point and breaks.
+      intersectionPoint = { lat: lat, lng: lng, alt: terrainElevation }
+    }
+
+    return intersectionPoint;
+  }
+  
+  function findClosestTerrainIntersection(lineInput, map) {
+    let intersectionPoints = [];
+    let closestIntersection = null;
+    let minDistance = Infinity;
+  
+    // Check if input is BufferGeometry (Three.js line) or simple coordinate array
+    if (lineInput instanceof THREE.BufferGeometry) {
+      // Handle THREE.BufferGeometry
+      const vertices = lineInput.getAttribute('position').array;
+      for (let i = 0; i < vertices.length; i += 9) { // Step by 9 for x, y, z of two points
+        const start = {lng: vertices[i], lat: vertices[i+1], alt: vertices[i+2]};
+        const end = {lng: vertices[i+3], lat: vertices[i+4], alt: vertices[i+5]};
+        checkIntersectionAndDistance(start, end, map, intersectionPoints, minDistance, closestIntersection);
+      }
+    } else {
+      // Handle coordinate pair
+      const start = {lng: lineInput[0][0], lat: lineInput[0][1], alt: lineInput[0][2]};
+      const end = {lng: lineInput[1][0], lat: lineInput[1][1], alt: lineInput[1][2]};
+      checkIntersectionAndDistance(start, end, map, intersectionPoints, minDistance, closestIntersection);
+    }
+  
+    // Find closest intersection to the line's origin
+    return closestIntersection;
+  }
+  
+  function checkIntersectionAndDistance(start, end, map, intersectionPoints, minDistance, closestIntersection) {
+    // Here, implement logic to check each segment for intersection as shown in the original function
+    // This is a simplified example that checks just the start point for demonstration
+    const terrainElevation = map.queryTerrainElevation([start.lng, start.lat], { exaggerated: true });
+    if (start.alt <= terrainElevation) {
+      const intersection = { lat: start.lat, lng: start.lng, alt: terrainElevation };
+      intersectionPoints.push(intersection);
+      
+      // Calculate distance from origin to this intersection point
+      const distance = Math.sqrt(Math.pow((start.lng - intersection.lng), 2) + Math.pow((start.lat - intersection.lat), 2) + Math.pow((start.alt - intersection.alt), 2));
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIntersection = intersection;
+      }
+    }
+    // Repeat similar logic for 'end' or other points along the BufferGeometry to find and compare intersections
   }
 
   const handleMapCenterInputChange = (e) => {
@@ -507,6 +584,88 @@ export default function RangefinderSimulator() {
     return { x: xIntersection, y: 0 };
   }
 
+  function calculate3DDistance(coord1, coord2) {
+    // Extract longitude, latitude, and altitude for each coordinate
+    const [lon1, lat1, alt1] = coord1;
+    const [lon2, lat2, alt2] = coord2;
+  
+    // Calculate the 2D distance between the points on the surface
+    const from = turf.point([lon1, lat1]);
+    const to = turf.point([lon2, lat2]);
+    const distance2D = turf.distance(from, to, 'meters');
+  
+    // Calculate the difference in altitude
+    const altitudeDifference = Math.abs(alt1 - alt2);
+  
+    // Use the Pythagorean theorem to calculate the 3D distance
+    const distance3D = Math.sqrt((distance2D * distance2D) + (altitudeDifference * altitudeDifference));
+  
+    return distance3D;
+  }
+  
+  /**
+ * Calculate a new point that lies at a specified distance along the length of a 3D line.
+ * 
+ * @param {Array} startCoord - The start coordinate of the line [longitude, latitude, altitude].
+ * @param {Array} endCoord - The end coordinate of the line [longitude, latitude, altitude].
+ * @param {Number} distance - The distance from the startCoor of the new coordinate
+ * @returns {Array} The new coordinate [longitude, latitude, altitude].
+ */
+  function calculateCoordinateFromDistance(startCoord, endCoord, distance) {
+    // Destructure the start and end coordinates
+    const [startLng, startLat, startAlt] = startCoord;
+    const [endLng, endLat, endAlt] = endCoord;
+  
+    // Calculate the differences in longitude, latitude, and altitude
+    const lngDiff = endLng - startLng;
+    const latDiff = endLat - startLat;
+    const altDiff = endAlt - startAlt;
+  
+    // Calculate the new coordinate by adding the distance of the differences to the start coordinate
+    const newLng = startLng + (lngDiff * distance);
+    const newLat = startLat + (latDiff * distance);
+    const newAlt = startAlt + (altDiff * distance);
+  
+    return [newLng, newLat, newAlt];
+  }
+  
+  function getInterpolatedIntersection(laser, laserStartVector3, laserEndVector3, laserStart, laserEnd, map, threebox) {
+    var segmentStart = laserStart
+      var segmentEnd = laserEnd
+      var newSegmentEnd = null
+      for (var i = 0; i < rangefinderMaxRange; i++) {
+        // console.log("running loop " + i)
+        newSegmentEnd = calculateCoordinateFromDistance(segmentStart, segmentEnd, i / rangefinderMaxRange)
+        const intersectionResult = findTerrainIntersection(newSegmentEnd[1], newSegmentEnd[0], newSegmentEnd[2], map, threebox)
+        // console.log("intersectionResult")
+        // console.log(intersectionResult)
+        if (intersectionResult) {
+          
+          const distance3d = calculate3DDistance([intersectionResult.lng, intersectionResult.lat, intersectionResult.alt], laserStart)
+          // console.log("distance3d")
+          // console.log(distance3d)
+          if (distance3d <= rangefinderMaxRange) {
+            setRangefinderRange(parseFloat(distance3d).toFixed(6))
+            
+            const newLaserEnd = threebox.projectToWorld([intersectionResult.lng, intersectionResult.lat, intersectionResult.alt]);
+            // console.log("newLaserEnd")
+            // console.log(newLaserEnd)
+            const newLaserEndVector3 = new THREE.Vector3(newLaserEnd.x, newLaserEnd.y, newLaserEnd.z)
+            const updatedVertices = [laserStartVector3, newLaserEndVector3]
+            laser.geometry.setFromPoints(updatedVertices);
+            // console.log("updatedVertices")
+            // console.log(updatedVertices)
+            laser.geometry.attributes.position.needsUpdate = true; // required after the first render
+            break;
+          }
+        } else {
+          setRangefinderRange(NaN.toString())
+          const updatedVertices = [laserStartVector3, laserEndVector3]
+          laser.geometry.setFromPoints(updatedVertices);
+          laser.geometry.attributes.position.needsUpdate = true; 
+        }
+      }
+  }
 
   useEffect(() => {
     if (rangefinder && laser && rangefinderCoords && rangefinderRotation && rangefinderScale && rangefinderMaxRange) {
@@ -563,20 +722,20 @@ export default function RangefinderSimulator() {
       // Get vertices from buffer geometry
       const verticesFromGeometry = getVerticesFromBufferGeometry(laser.geometry);
 
-      const start = threebox.unprojectFromWorld(verticesFromGeometry[0]);
-      const end = threebox.unprojectFromWorld(verticesFromGeometry[1]);
-      updateLinePosition([[start[0], start[1]], [end[0], end[1]]])
-      var thetaAngleDegrees = calculateAltitudeAngle({ lng: start[0], lat: start[1], altitude: start[2] }, { lng: end[0], lat: end[1], altitude: end[2] })
+      const laserStart = threebox.unprojectFromWorld(verticesFromGeometry[0]);
+      const laserEnd = threebox.unprojectFromWorld(verticesFromGeometry[1]);
+      console.log("laserStart")
+      console.log(laserStart)
+      updateLinePosition([[laserStart[0], laserStart[1]], [laserEnd[0], laserEnd[1]]])
+      var thetaAngleDegrees = calculateAltitudeAngle({ lng: laserStart[0], lat: laserStart[1], altitude: laserStart[2] }, { lng: laserEnd[0], lat: laserEnd[1], altitude: laserEnd[2] })
       var intersection = calculateIntersectionPoint(thetaAngleDegrees, rangefinderCoords[2], rangefinderRange)
       const sideA = Math.pow(intersection.x, 2)
       const sideB = Math.pow(rangefinderCoords[2], 2)
       const hypotenuse = Math.sqrt(sideA + sideB)
       const roundedHypotenuse = parseFloat(hypotenuse).toFixed(6)
-      if (roundedHypotenuse <= rangefinderMaxRange) {
-        setRangefinderRange(roundedHypotenuse)
-      } else {
-        setRangefinderRange(0)
-      }
+      
+      setInterpolatedIntersectionDebounced.current(laser, verticesFromGeometry[0], verticesFromGeometry[1], laserStart, laserEnd, map, threebox)
+      
     }
   }, [rangefinderCoords, rangefinderRotation, rangefinderScale, rangefinderMaxRange]);
 
