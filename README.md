@@ -1,70 +1,21 @@
-# Getting Started with Create React App
+# Rangefinder simulation: A React and Mapbox GL implementation
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Rangefinder simulator.
 
-## Available Scripts
+A virtual rangefinder that displays a measurement range on a 3D map is implemented using Mapbox GL, Threebox, and React. The purpose of the app is to calculate the distance and coordinates of a map intersection with an endpoint in 3D space extending a from the 3D position of an observer. Both the map and rangefinder are able to be controlled either via direct manipulation using the mouse or via text inputs bound to position and rotation parameters.
 
-In the project directory, you can run:
+Rangefinder model is courtesy of Kenny.nl 3D assets colleciton: https://kenney.nl/assets?q=3d
 
-### `npm start`
+![rangefinder-simulator-demo](https://github.com/ptr-cs/rangefinder-simulator/assets/112029487/09cea04c-e847-406c-82ec-fe99308e39b0)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+![image](https://github.com/ptr-cs/rangefinder-simulator/assets/112029487/50b3714b-e3d3-4766-9e5f-9ca9992c19fe)
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Installing and launching the application
 
-### `npm test`
+*Note*: You must use a Mapbox GL access token in order to run this app; once you have obtained an access token, copy and paste the token string in the root of the project in a file called .env like so:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+  REACT_APP_MAPBOX_TOKEN="your_access_token_string"
 
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- npm install
+- npm run start
+  
