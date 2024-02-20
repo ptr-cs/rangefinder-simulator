@@ -46,7 +46,7 @@ export default function RangefinderSimulator() {
   const RANGEFINDER_INITIAL_COORDS = [-122.450648, 37.701857, 500]
   const RANGEFINDER_INITIAL_ROTATION = { x: 0, y: 0, z: 0 }
   const RANGEFINDER_INITIAL_SCALE = 0.03
-  const RANGEFINDER_INITIAL_MAX_RANGE = 10000.0
+  const RANGEFINDER_INITIAL_MAX_RANGE = 1000.0
 
   const [rangefinderCoords, setRangefinderCoords] = useState(RANGEFINDER_INITIAL_COORDS);
   const [rangefinderRotation, setRangefinderRotation] = useState(RANGEFINDER_INITIAL_ROTATION);
@@ -629,7 +629,7 @@ export default function RangefinderSimulator() {
     return [newLng, newLat, newAlt];
   }
   
-  function getInterpolatedIntersection(laser, laserStartVector3, laserEndVector3, laserStart, laserEnd, map, threebox) {
+  function getInterpolatedIntersection(laser, laserStartVector3, laserEndVector3, laserStart, laserEnd, rangefinderMaxRange, map, threebox) {
     var segmentStart = laserStart
       var segmentEnd = laserEnd
       var newSegmentEnd = null
@@ -734,7 +734,7 @@ export default function RangefinderSimulator() {
       const hypotenuse = Math.sqrt(sideA + sideB)
       const roundedHypotenuse = parseFloat(hypotenuse).toFixed(6)
       
-      setInterpolatedIntersectionDebounced.current(laser, verticesFromGeometry[0], verticesFromGeometry[1], laserStart, laserEnd, map, threebox)
+      setInterpolatedIntersectionDebounced.current(laser, verticesFromGeometry[0], verticesFromGeometry[1], laserStart, laserEnd, rangefinderMaxRange, map, threebox)
       
     }
   }, [rangefinderCoords, rangefinderRotation, rangefinderScale, rangefinderMaxRange]);
