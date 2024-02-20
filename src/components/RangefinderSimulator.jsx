@@ -15,6 +15,14 @@ export default function RangefinderSimulator() {
   const [threebox, setThreebox] = useState(null);
   const [rangefinder, setRangefinder] = useState(null);
   const [laser, setLaser] = useState(null);
+  const [lineSourceData, setLineSourceData] = useState({
+    type: 'Feature',
+    geometry: {
+        type: 'LineString',
+        properties: {},
+        coordinates: [[-122.450648, 37.701857], [-122.439287109375, 37.701857]] // Example coordinates
+    }
+});
 
   const MAP_INITIAL_CENTER = { lat: 37.701857, lng: -122.450648 }
   const MAP_INITIAL_ZOOM = 15
@@ -58,6 +66,18 @@ export default function RangefinderSimulator() {
   const setMapBearingInputDebounced = useRef(_.debounce(setMapBearing, 10));
 
   mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
+  
+  // Function to update line position
+  const updateLinePosition = (newLinePosition) => {
+      setLineSourceData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+              type: 'LineString',
+              coordinates: newLinePosition
+          }
+      });
+  };
 
   const onDraggedObject = (e) => {
     setRangefinderCoords(e.detail.draggedObject.coordinates)
@@ -109,7 +129,7 @@ export default function RangefinderSimulator() {
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
 
     // Create a material for the line
-    const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    const material = new THREE.LineBasicMaterial({ color: 0xff0000, transparent: true, opacity: .5  });
 
     // Create the line using the geometry and material
     const line = new THREE.Line(geometry, material);
@@ -174,42 +194,32 @@ export default function RangefinderSimulator() {
       );
 
 
-      initMap.addSource('mapbox-dem', {
-        'type': 'raster-dem',
-        'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
-        'tileSize': 512,
-        'maxzoom': 14
+      // initMap.addSource('mapbox-dem', {
+      //   'type': 'raster-dem',
+      //   'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+      //   'tileSize': 512,
+      //   'maxzoom': 14
+      // });
+      // // add the DEM source as a terrain layer with exaggerated height
+      // initMap.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
+
+        var calcCoords = calculateDestination(37.701857,-122.450648, 0, rangefinderMaxRange)
+        initMap.addSource('lineSource', {
+          'type': 'geojson',
+          'data': lineSourceData
       });
-      // add the DEM source as a terrain layer with exaggerated height
-      initMap.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
 
-      //   var calcCoords = calculateDestination(37.701857,-122.450648, 1, 1000)
-      //   initMap.addSource('lineSource', {
-      //     'type': 'geojson',
-      //     'data': {
-      //         'type': 'Feature',
-      //         'properties': {},
-      //         'geometry': {
-      //             'type': 'LineString',
-      //             'coordinates': [
-      //                 [-122.450648, 37.701857, 1000], // Start of the line [longitude, latitude]
-      //                 [calcCoords.lon, calcCoords.lat, 0]  // End of the line [longitude, latitude]
-      //             ]
-      //         }
-      //     }
-      // });
-
-      // // Add a layer to visualize the line
-      // initMap.addLayer({
-      //     'id': 'lineLayer',
-      //     'type': 'line',
-      //     'source': 'lineSource',
-      //     'layout': {},
-      //     'paint': {
-      //         'line-width': 8,
-      //         'line-color': '#007cbf' // Line color
-      //     }
-      // });
+      // Add a layer to visualize the line
+      initMap.addLayer({
+          'id': 'lineLayer',
+          'type': 'line',
+          'source': 'lineSource',
+          'layout': {},
+          'paint': {
+              'line-width': 8,
+              'line-color': '#007cbf' // Line color
+          }
+      });
 
       initMap.addLayer({
         id: 'custom-threebox-model',
@@ -358,8 +368,12 @@ export default function RangefinderSimulator() {
         max: new THREE.Vector2(bounds.right, bounds.bottom)
     };
 
+    console.log("end line coords")
+    console.log([lineEnd.x, lineEnd.y])
     // Iterate through each feature in the map
-    const features = map.queryRenderedFeatures({ layers: ['add-3d-buildings'] }); // Replace 'your-layer-name' with the name of your map layer
+    const features = map.queryRenderedFeatures([lineEnd.x, lineEnd.y], { layers: ['add-3d-buildings'] }); // Replace 'your-layer-name' with the name of your map layer
+    console.log("features")
+    console.log(features)
     for (const feature of features) {
         // Get the geometry of the feature
         const geometry = feature.geometry;
@@ -562,6 +576,56 @@ function getVerticesFromBufferGeometry(bufferGeometry) {
   return vertices;
 }
 
+// Function to calculate the angle between two points in radians
+function calculateAltitudeAngle(point1, point2) {
+  // Calculate the altitude difference between the two points
+  const altitudeDifference = Math.abs(point2.altitude - point1.altitude);
+
+  // Calculate the distance between the two points in meters
+  const lat1 = point1.lat * Math.PI / 180.0;
+  const lat2 = point2.lat * Math.PI / 180.0;
+  const lon1 = point1.lng * Math.PI / 180.0;
+  const lon2 = point2.lng * Math.PI / 180.0;
+  const R = 6371000; // Earth radius in meters
+  const x = (lon2 - lon1) * Math.cos((lat1 + lat2) / 2);
+  const y = (lat2 - lat1);
+  const distance = Math.sqrt(x * x + y * y) * R;
+
+  // Calculate the angle of altitude difference using trigonometry
+  const angleRadians = Math.atan(altitudeDifference / distance);
+
+  // Convert radians to degrees
+  const angleDegrees = angleRadians * 180.0 / Math.PI;
+
+  return angleDegrees;
+}
+
+// Function to calculate the length of the hypotenuse
+function calculateHypotenuse(adjacent, thetaDegrees) {
+  // Convert angle from degrees to radians
+  const thetaRadians = thetaDegrees * (Math.PI / 180);
+
+  // Calculate the length of the hypotenuse using the cosine function
+  const hypotenuse = adjacent / Math.cos(thetaRadians);
+
+  return hypotenuse;
+}
+
+// Function to calculate the intersection point of line B through A
+function calculateIntersectionPoint(angleB, yOffsetB, length) {
+  // Convert angle from degrees to radians
+  const thetaRadians = angleB * (Math.PI / 180);
+
+  // Calculate the Y-coordinate of line A (same as starting position of line B on Y-axis)
+  const yA = yOffsetB;
+
+  // Calculate the X-coordinate of the intersection point on line B
+  const xIntersection = yA / Math.tan(thetaRadians);
+
+  return { x: xIntersection, y: 0 };
+}
+
+
   useEffect(() => {
     if (rangefinder && laser && rangefinderCoords && rangefinderRotation && rangefinderScale && rangefinderMaxRange) {
       rangefinder.setCoords(rangefinderCoords)
@@ -582,8 +646,8 @@ function getVerticesFromBufferGeometry(bufferGeometry) {
       // console.log("threebox projectToWorld")
       // console.log(startPos)
       // console.log(endPos)
-      // const startPosMap = map.project(startCoord);
-      // const endPosMap = map.project(endCoord);
+      const startPosMap = map.project(startCoord);
+      const endPosMap = map.project(endCoord);
       // console.log("map projectToWorld")
       // console.log(startPosMap)
       // console.log(endPosMap)
@@ -625,31 +689,49 @@ function getVerticesFromBufferGeometry(bufferGeometry) {
 
       laser.geometry.setFromPoints(rotatedVertices);
       
-      if (laser.geometry) {
-        // Get vertices from buffer geometry
-        const vertices = getVerticesFromBufferGeometry(laser.geometry);
-        console.log(vertices)
-        const intersection = calculateLineMapIntersection(vertices[0], vertices[1], map, threebox);
-        console.log('Intersection point:', intersection);
+      // Get vertices from buffer geometry
+      const verticesFromGeometry = getVerticesFromBufferGeometry(laser.geometry);
+      console.log(verticesFromGeometry)
+      
+      const start = threebox.unprojectFromWorld(verticesFromGeometry[0]);
+      const end = threebox.unprojectFromWorld(verticesFromGeometry[1]);
+      console.log('line pos')
+      console.log(start)
+      console.log(end)
+      console.log('map line coords')
+      console.log(lineSourceData)
+      updateLinePosition([[start[0], start[1]], [end[0], end[1]]])
+      console.log("angle")
+      var thetaAngleDegrees = calculateAltitudeAngle({lng: start[0], lat: start[1], altitude: start[2]}, {lng: end[0], lat: end[1], altitude: end[2]})
+      console.log(thetaAngleDegrees)
+      console.log("intersection")
+      var intersection = calculateIntersectionPoint(thetaAngleDegrees, rangefinderCoords[2], rangefinderRange)
+      console.log(intersection.x / 3.281)
+      console.log("distance")
+      const sideA = Math.pow(intersection.x, 2)
+      const sideB = Math.pow(rangefinderCoords[2], 2)
+      const hypotenuse = Math.sqrt(sideA + sideB)
+      console.log(hypotenuse)
+      const roundedHypotenuse = parseFloat(hypotenuse).toFixed(6)
+      if (roundedHypotenuse <= rangefinderMaxRange) {
+        setRangefinderRange(roundedHypotenuse)
+      } else {
+        setRangefinderRange(0)
       }
       
-      
-      // console.log("end coords")
-      // console.log(endCoord)
-      
-      // Convert 3D point to geographical coordinates (latitude, longitude)
-      // const lngLat = map.unproject([rotatedVertices[0].x, rotatedVertices[0].y]);
-      
-      // setRangefinderMaxRangeCoordinate([lngLat.lng, lngLat.lat, rotatedVertices[1].z])
-      // console.log("max range coordinate")
-      // console.log(rangefinderMaxRangeCoordinate)
-      //laser.rotation.set(0, 0, 0);
-      //laser.rotateOnAxis(new THREE.Vector3(0, 0, 1), THREE.MathUtils.degToRad(rangefinderRotation.z));
-      
-      //setRangefinderRange()
+
     }
   }, [rangefinderCoords, rangefinderRotation, rangefinderScale, rangefinderMaxRange]);
 
+  useEffect(() => {
+    if (map && lineSourceData) {
+      try {
+        map.getSource('lineSource').setData(lineSourceData);
+      } catch {}
+        
+    }
+  }, [lineSourceData]);
+  
   useEffect(() => {
     console.log(debugCounter)
     if (map && !isNaN(mapCenter.lat) && !isNaN(mapCenter.lng) && !isNaN(mapZoom)
