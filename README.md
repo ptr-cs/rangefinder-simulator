@@ -19,3 +19,5 @@ Rangefinder model is courtesy of Kenny.nl 3D assets colleciton: https://kenney.n
 - npm install
 - npm run start
   
+# License
+Educational purposes only. Any other usage requires the express written permission of the repository owner.
