@@ -6,12 +6,15 @@ import { THREE, Threebox } from "threebox-plugin";
 import "threebox-plugin/dist/threebox.css";
 import "bootstrap/dist/css/bootstrap.css"
 import mapboxgl from '!mapbox-gl'; // eslint-disable-line import/no-webpack-loader-syntax
-import { Perf } from 'r3f-perf'
-import _, { range } from 'lodash'
-import { Vector3 } from 'threebox/src/three64';
+import _ from 'lodash'
 import * as turf from '@turf/turf'
+import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
+import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 
 export default function RangefinderSimulator() {
+  
+  mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
+  
   const mapContainerRef = useRef(null);
   const [map, setMap] = useState(null);
   const [threebox, setThreebox] = useState(null);
@@ -69,8 +72,6 @@ export default function RangefinderSimulator() {
   const setMapBearingDebounced = useRef(_.debounce(setMapBearing, 250));
   const setMapBearingInputDebounced = useRef(_.debounce(setMapBearing, 10));
 
-  mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
-
   // Function to update line position
   const updateLinePosition = (newLinePosition) => {
     setLineSourceData({
@@ -82,6 +83,8 @@ export default function RangefinderSimulator() {
       }
     });
   };
+  
+  const updateLinePositionDebounced = useRef(_.debounce(updateLinePosition, 100));
 
   const onDraggedObject = (e) => {
     setRangefinderCoords(e.detail.draggedObject.coordinates)
@@ -100,8 +103,17 @@ export default function RangefinderSimulator() {
       antialias: true // create the gl context with MSAA antialiasing, so custom layers are antialiased
     });
 
+    // Add the control to the map.
+    initMap.addControl(
+      new MapboxGeocoder({
+          accessToken: mapboxgl.accessToken,
+          mapboxgl: mapboxgl
+      })
+    );
     initMap.addControl(new mapboxgl.NavigationControl());
     initMap.addControl(new mapboxgl.ScaleControl());
+    
+
 
     // eslint-disable-next-line no-undef
     const tb = (window.tb = new Threebox(
@@ -111,6 +123,8 @@ export default function RangefinderSimulator() {
         defaultLights: true, enableSelectingObjects: true, enableDraggingObjects: true, enableRotatingObjects: true, enableTooltips: true
       }
     ));
+    
+    tb.altitudeStep = 1.0;
 
     setThreebox(tb)
 
@@ -204,7 +218,6 @@ export default function RangefinderSimulator() {
       // add the DEM source as a terrain layer with exaggerated height
       initMap.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 }); // 'exaggeration': 1.5
 
-      var calcCoords = calculateDestination(37.701857, -122.450648, 0, rangefinderMaxRange)
       initMap.addSource('lineSource', {
         'type': 'geojson',
         'data': lineSourceData
@@ -228,7 +241,6 @@ export default function RangefinderSimulator() {
         renderingMode: '3d',
         onAdd: function () {
           // Creative Commons License attribution: https://kenney.nl/
-          const scale = rangefinderScale;
           const options = {
             obj: 'rangefinder.gltf',
             type: 'gltf',
@@ -294,77 +306,6 @@ export default function RangefinderSimulator() {
 
     return { lat: latEnd, lon: lonEnd };
   }
-
-  // Function to check if a point lies within a bounding box
-  function isPointInsideBoundingBox(point, bounds) {
-    return point.x >= bounds.min.x && point.x <= bounds.max.x &&
-      point.y >= bounds.min.y && point.y <= bounds.max.y;
-  }
-
-  // Function to calculate intersection point of two line segments
-  function calculateIntersection(lineStart, lineEnd, segmentStart, segmentEnd) {
-    const denominator = ((segmentEnd.y - segmentStart.y) * (lineEnd.x - lineStart.x)) - ((segmentEnd.x - segmentStart.x) * (lineEnd.y - lineStart.y));
-
-    // If the two lines are parallel (denominator close to 0), there is no intersection
-    if (denominator === 0) {
-      return null;
-    }
-
-    const ua = (((segmentEnd.x - segmentStart.x) * (lineStart.y - segmentStart.y)) - ((segmentEnd.y - segmentStart.y) * (lineStart.x - segmentStart.x))) / denominator;
-    const ub = (((lineEnd.x - lineStart.x) * (lineStart.y - segmentStart.y)) - ((lineEnd.y - lineStart.y) * (lineStart.x - segmentStart.x))) / denominator;
-
-    // If both ua and ub are between 0 and 1, the intersection point is within both line segments
-    if (ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1) {
-      const x = lineStart.x + (ua * (lineEnd.x - lineStart.x));
-      const y = lineStart.y + (ua * (lineEnd.y - lineStart.y));
-      return new THREE.Vector2(x, y);
-    }
-
-    return null; // No intersection
-  }
-  
-    /**
-   * Clips a 3D line below a certain elevation, making the below-ground part invisible.
-   * @param {THREE.BufferGeometry} geometry - The geometry representing the 3D line.
-   * @param {number} groundLevel - The elevation at which the ground intersects the line.
-   * @returns {THREE.BufferGeometry} A new geometry representing the clipped line.
-   */
-  function clipLineAtGroundLevel(geometry, groundLevel) {
-    const vertices = geometry.getAttribute('position').array;
-    const newVertices = [];
-    let isAboveGround = vertices[2] > groundLevel;
-
-    for (let i = 0; i < vertices.length; i += 3) {
-      // Check if the current point is above the ground
-      if (vertices[i + 2] > groundLevel) {
-        if (!isAboveGround) {
-          // Calculate and add the intersection point with the ground
-          // Note: This is a simplification. You'd need to interpolate the actual intersection point.
-          newVertices.push(vertices[i], vertices[i + 1], groundLevel);
-        }
-        newVertices.push(vertices[i], vertices[i + 1], vertices[i + 2]);
-        isAboveGround = true;
-      } else {
-        if (isAboveGround && i > 0) {
-          // Calculate and add the intersection point with the ground
-          // Note: This is a simplification. You'd need to interpolate the actual intersection point.
-          newVertices.push(vertices[i - 3], vertices[i - 2], groundLevel);
-        }
-        isAboveGround = false;
-      }
-    }
-    // Create a new geometry with the clipped vertices
-    const newGeometry = new THREE.BufferGeometry();
-    newGeometry.setAttribute('position', new THREE.Float32BufferAttribute(newVertices, 3));
-    return newGeometry;
-  }
-  
-  // Function to convert Three.js coordinates to geographic coordinates
-  function convertToGeographicCoordinates(threeX, threeY, threeZ, threebox) {
-    // Conversion logic here. This will depend on your Three.js and Mapbox setup.
-    var lnglat = map.unproject([threeX, threeY, threeZ])
-    return { lat: lnglat.lat/* Latitude */, lng: lnglat.lng/* Longitude */, alt: threeZ/* Altitude in meters */ };
-  }
   
   // Function to sample elevation along a 3D line and identify intersection with terrain
   function findTerrainIntersection(lat, lng, alt, map, threebox) {
@@ -388,49 +329,6 @@ export default function RangefinderSimulator() {
     return intersectionPoint;
   }
   
-  function findClosestTerrainIntersection(lineInput, map) {
-    let intersectionPoints = [];
-    let closestIntersection = null;
-    let minDistance = Infinity;
-  
-    // Check if input is BufferGeometry (Three.js line) or simple coordinate array
-    if (lineInput instanceof THREE.BufferGeometry) {
-      // Handle THREE.BufferGeometry
-      const vertices = lineInput.getAttribute('position').array;
-      for (let i = 0; i < vertices.length; i += 9) { // Step by 9 for x, y, z of two points
-        const start = {lng: vertices[i], lat: vertices[i+1], alt: vertices[i+2]};
-        const end = {lng: vertices[i+3], lat: vertices[i+4], alt: vertices[i+5]};
-        checkIntersectionAndDistance(start, end, map, intersectionPoints, minDistance, closestIntersection);
-      }
-    } else {
-      // Handle coordinate pair
-      const start = {lng: lineInput[0][0], lat: lineInput[0][1], alt: lineInput[0][2]};
-      const end = {lng: lineInput[1][0], lat: lineInput[1][1], alt: lineInput[1][2]};
-      checkIntersectionAndDistance(start, end, map, intersectionPoints, minDistance, closestIntersection);
-    }
-  
-    // Find closest intersection to the line's origin
-    return closestIntersection;
-  }
-  
-  function checkIntersectionAndDistance(start, end, map, intersectionPoints, minDistance, closestIntersection) {
-    // Here, implement logic to check each segment for intersection as shown in the original function
-    // This is a simplified example that checks just the start point for demonstration
-    const terrainElevation = map.queryTerrainElevation([start.lng, start.lat], { exaggerated: true });
-    if (start.alt <= terrainElevation) {
-      const intersection = { lat: start.lat, lng: start.lng, alt: terrainElevation };
-      intersectionPoints.push(intersection);
-      
-      // Calculate distance from origin to this intersection point
-      const distance = Math.sqrt(Math.pow((start.lng - intersection.lng), 2) + Math.pow((start.lat - intersection.lat), 2) + Math.pow((start.alt - intersection.alt), 2));
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestIntersection = intersection;
-      }
-    }
-    // Repeat similar logic for 'end' or other points along the BufferGeometry to find and compare intersections
-  }
-
   const handleMapCenterInputChange = (e) => {
     const { name, value } = e.target;
     if (isNaN(value))
@@ -522,6 +420,18 @@ export default function RangefinderSimulator() {
     setMapPitch(MAP_INITIAL_PITCH)
     setMapBearing(MAP_INITIAL_BEARING)
   }
+  
+  const handleRangefinderJumpToMap = (e) => {
+    var currentAlt = rangefinderCoords[2]
+    var sampledAlt = map.queryTerrainElevation([mapCenter.lng, mapCenter.lat], { exaggerated: true })
+    var newAlt = currentAlt > sampledAlt ? currentAlt : sampledAlt + 500
+    setRangefinderCoords([mapCenter.lng, mapCenter.lat, newAlt]);
+  }
+  
+  const handleJumpToRangefinder = (e) => {
+    setMapCenterInputDebounced.current({lat: rangefinderCoords[1], lng: rangefinderCoords[0]})
+    setMapAltitude(rangefinderCoords[2] * 2)
+  }
 
   // Function to update the model's scale
   const updateModelScale = (newScale) => {
@@ -547,41 +457,6 @@ export default function RangefinderSimulator() {
     }
 
     return vertices;
-  }
-
-  // Function to calculate the angle between two points in radians
-  function calculateAltitudeAngle(point1, point2) {
-    // Calculate the altitude difference between the two points
-    const altitudeDifference = Math.abs(point2.altitude - point1.altitude);
-
-    // Calculate the distance between the two points in meters
-    const lat1 = point1.lat * Math.PI / 180.0;
-    const lat2 = point2.lat * Math.PI / 180.0;
-    const lon1 = point1.lng * Math.PI / 180.0;
-    const lon2 = point2.lng * Math.PI / 180.0;
-    const R = 6371000; // Earth radius in meters
-    const x = (lon2 - lon1) * Math.cos((lat1 + lat2) / 2);
-    const y = (lat2 - lat1);
-    const distance = Math.sqrt(x * x + y * y) * R;
-
-    // Calculate the angle of altitude difference using trigonometry
-    const angleRadians = Math.atan(altitudeDifference / distance);
-
-    // Convert radians to degrees
-    const angleDegrees = angleRadians * 180.0 / Math.PI;
-
-    return angleDegrees;
-  }
-
-  // Function to calculate the intersection point of line B through A
-  function calculateIntersectionPoint(angleB, yOffsetB, length) {
-    // Convert angle from degrees to radians
-    const thetaRadians = angleB * (Math.PI / 180);
-    // Calculate the Y-coordinate of line A (same as starting position of line B on Y-axis)
-    const yA = yOffsetB;
-    // Calculate the X-coordinate of the intersection point on line B
-    const xIntersection = yA / Math.tan(thetaRadians);
-    return { x: xIntersection, y: 0 };
   }
 
   function calculate3DDistance(coord1, coord2) {
@@ -659,7 +534,7 @@ export default function RangefinderSimulator() {
             break;
           }
         } else {
-          setRangefinderRange(NaN.toString())
+          setRangefinderRange(0)
           const updatedVertices = [laserStartVector3, laserEndVector3]
           laser.geometry.setFromPoints(updatedVertices);
           laser.geometry.attributes.position.needsUpdate = true; 
@@ -717,22 +592,16 @@ export default function RangefinderSimulator() {
       const inverseTranslationMatrix = new THREE.Matrix4().makeTranslation(origin.x, origin.y, origin.z);
       rotatedVertices.forEach(vertex => vertex.applyMatrix4(inverseTranslationMatrix));
 
-      laser.geometry.setFromPoints(rotatedVertices);
+      laser.geometry.setFromPoints(rotatedVertices); // test comment
 
       // Get vertices from buffer geometry
       const verticesFromGeometry = getVerticesFromBufferGeometry(laser.geometry);
 
       const laserStart = threebox.unprojectFromWorld(verticesFromGeometry[0]);
       const laserEnd = threebox.unprojectFromWorld(verticesFromGeometry[1]);
-      console.log("laserStart")
-      console.log(laserStart)
-      updateLinePosition([[laserStart[0], laserStart[1]], [laserEnd[0], laserEnd[1]]])
-      var thetaAngleDegrees = calculateAltitudeAngle({ lng: laserStart[0], lat: laserStart[1], altitude: laserStart[2] }, { lng: laserEnd[0], lat: laserEnd[1], altitude: laserEnd[2] })
-      var intersection = calculateIntersectionPoint(thetaAngleDegrees, rangefinderCoords[2], rangefinderRange)
-      const sideA = Math.pow(intersection.x, 2)
-      const sideB = Math.pow(rangefinderCoords[2], 2)
-      const hypotenuse = Math.sqrt(sideA + sideB)
-      const roundedHypotenuse = parseFloat(hypotenuse).toFixed(6)
+      // console.log("laserStart")
+      // console.log(laserStart)
+      updateLinePositionDebounced.current([[laserStart[0], laserStart[1]], [laserEnd[0], laserEnd[1]]])
       
       setInterpolatedIntersectionDebounced.current(laser, verticesFromGeometry[0], verticesFromGeometry[1], laserStart, laserEnd, rangefinderMaxRange, map, threebox)
       
@@ -746,15 +615,15 @@ export default function RangefinderSimulator() {
       } catch { }
 
     }
-  }, [lineSourceData]);
+  }, [lineSourceData, map]);
 
   useEffect(() => {
     if (map && !isNaN(mapCenter.lat) && !isNaN(mapCenter.lng) && !isNaN(mapZoom)
-      && (prevMapZoom !== parseFloat(mapZoom).toFixed(6) ||
+      && ((prevMapZoom !== parseFloat(mapZoom).toFixed(6) ||
         prevMapCenter.lat !== parseFloat(mapCenter.lat).toFixed(6) ||
         prevMapCenter.lng !== parseFloat(mapCenter.lng).toFixed(6)) ||
         prevMapPitch !== parseFloat(mapPitch).toFixed(6) ||
-        prevMapBearing !== parseFloat(mapBearing).toFixed(6)) {
+        prevMapBearing !== parseFloat(mapBearing).toFixed(6))) {
       if (map !== null) {
         map.jumpTo({
           center: [parseFloat(mapCenter.lng).toFixed(6), parseFloat(mapCenter.lat).toFixed(6)],
@@ -774,7 +643,7 @@ export default function RangefinderSimulator() {
     setPrevMapPitch(parseFloat(mapPitch).toFixed(6))
     setPrevMapBearing(parseFloat(mapBearing).toFixed(6))
     setDebugCounter(debugCounter + 1)
-  }, [mapCenter, mapZoom, mapPitch, mapBearing, map]);
+  }, [mapCenter, mapZoom, mapPitch, mapBearing]);
 
   return (
     <div className='parent-div'>
@@ -812,7 +681,12 @@ export default function RangefinderSimulator() {
         </div>
         <div className='label-control-pair reset-button-pair empty-label-margin-right'>
           <Form.Label className='reset-button-label'></Form.Label>
-          <Button variant="primary" onClick={handleMapReset}>Reset</Button>
+          <Button variant="danger" onClick={handleMapReset}>Reset</Button>
+          <Form.Label></Form.Label>
+        </div>
+        <div className='label-control-pair reset-button-pair empty-label-margin-right'>
+          <Form.Label className='reset-button-label'></Form.Label>
+          <Button variant="primary" onClick={handleJumpToRangefinder}>Jump to Rangef.</Button>
           <Form.Label></Form.Label>
         </div>
       </div>
@@ -865,7 +739,12 @@ export default function RangefinderSimulator() {
         </div>
         <div className='label-control-pair reset-button-pair empty-label-margin-right'>
           <Form.Label className='reset-button-label'></Form.Label>
-          <Button variant="primary" onClick={handleRangefinderReset}>Reset</Button>
+          <Button variant="danger" onClick={handleRangefinderReset}>Reset</Button>
+          <Form.Label></Form.Label>
+        </div>
+        <div className='label-control-pair reset-button-pair empty-label-margin-right'>
+          <Form.Label className='reset-button-label'></Form.Label>
+          <Button variant="primary" onClick={handleRangefinderJumpToMap}>Jump To Map</Button>
           <Form.Label></Form.Label>
         </div>
       </div>
