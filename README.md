@@ -6,7 +6,7 @@ A virtual rangefinder that displays a measurement range on a 3D map is implement
 
 Rangefinder model is courtesy of Kenny.nl 3D assets colleciton: https://kenney.nl/assets?q=3d
 
-![rangefinder-simulator-demo](https://github.com/ptr-cs/rangefinder-simulator/assets/112029487/09cea04c-e847-406c-82ec-fe99308e39b0)
+![rangefinder-simulator-demo3](https://github.com/ptr-cs/rangefinder-simulator/assets/112029487/b8000368-9770-4828-be42-b7e4017dc79c)
 
 ![image](https://github.com/ptr-cs/rangefinder-simulator/assets/112029487/50b3714b-e3d3-4766-9e5f-9ca9992c19fe)
 
