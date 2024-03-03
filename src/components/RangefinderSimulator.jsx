@@ -6,7 +6,7 @@ import { THREE, Threebox } from "threebox-plugin";
 import "threebox-plugin/dist/threebox.css";
 import "bootstrap/dist/css/bootstrap.css"
 import mapboxgl from '!mapbox-gl'; // eslint-disable-line import/no-webpack-loader-syntax
-import _ from 'lodash'
+import _, { range } from 'lodash'
 import * as turf from '@turf/turf'
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
@@ -16,7 +16,9 @@ export default function RangefinderSimulator() {
   mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
   
   const mapContainerRef = useRef(null);
+  const mapContainerRangeRef = useRef(null);
   const [map, setMap] = useState(null);
+  const [rangeMap, setRangeMap] = useState(null);
   const [threebox, setThreebox] = useState(null);
   const [rangefinder, setRangefinder] = useState(null);
   const [laser, setLaser] = useState(null);
@@ -40,6 +42,8 @@ export default function RangefinderSimulator() {
   const [mapPitch, setMapPitch] = useState(MAP_INITIAL_PITCH);
   const [mapBearing, setMapBearing] = useState(MAP_INITIAL_BEARING);
   const [mapAltitude, setMapAltitude] = useState(MAP_INITIAL_ALTITUDE);
+  
+  const [mapRangeCenter, setMapRangeCenter] = useState(MAP_INITIAL_CENTER);
 
   const [prevMapCenter, setPrevMapCenter] = useState({ lat: 0.0, lng: 0.0 });
   const [prevMapZoom, setPrevMapZoom] = useState(0);
@@ -62,6 +66,8 @@ export default function RangefinderSimulator() {
   const [debugCounter, setDebugCounter] = useState(0);
   
   const setInterpolatedIntersectionDebounced = useRef(_.debounce(getInterpolatedIntersection, 100));
+  
+  const setMapRangeCenterDebounced = useRef(_.debounce(setMapRangeCenterAndUpdateMap, 200));
 
   const setMapCenterDebounced = useRef(_.debounce(setMapCenter, 250));
   const setMapCenterInputDebounced = useRef(_.debounce(setMapCenter, 10));
@@ -92,42 +98,13 @@ export default function RangefinderSimulator() {
     setRangefinderRotation(newRotation)
   }
 
-
-
-  useEffect(() => {
-    const initMap = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/streets-v11',
-      center: [mapCenter.lng, mapCenter.lat],
-      zoom: mapZoom,
-      antialias: true // create the gl context with MSAA antialiasing, so custom layers are antialiased
-    });
-
-    // Add the control to the map.
-    initMap.addControl(
-      new MapboxGeocoder({
-          accessToken: mapboxgl.accessToken,
-          mapboxgl: mapboxgl
-      })
-    );
-    initMap.addControl(new mapboxgl.NavigationControl());
-    initMap.addControl(new mapboxgl.ScaleControl());
-    
-
-
-    // eslint-disable-next-line no-undef
-    const tb = (window.tb = new Threebox(
-      initMap,
-      initMap.getCanvas().getContext('webgl'),
-      {
-        defaultLights: true, enableSelectingObjects: true, enableDraggingObjects: true, enableRotatingObjects: true, enableTooltips: true
-      }
-    ));
-    
-    tb.altitudeStep = 1.0;
-
-    setThreebox(tb)
-
+  function createLaser(tb) {
+    try {
+      if (tb)
+        tb.remove(laser);
+    } catch(e) {
+      console.log(e)
+    }
     // Define the start and end coordinates for the line
     const startCoord = rangefinderCoords
     const destination = calculateDestination(startCoord[1], startCoord[0], 0, rangefinderMaxRange);
@@ -154,6 +131,54 @@ export default function RangefinderSimulator() {
 
     // Add the line to the Threebox scene
     tb.add(line);
+  }
+
+  useEffect(() => {
+    const initMap = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/streets-v11',
+      center: [mapCenter.lng, mapCenter.lat],
+      zoom: mapZoom,
+      antialias: true // create the gl context with MSAA antialiasing, so custom layers are antialiased
+    });
+    
+    const initRangeMap = new mapboxgl.Map({
+      container: mapContainerRangeRef.current,
+      style: 'mapbox://styles/mapbox/streets-v11',
+      center: [mapCenter.lng, mapCenter.lat],
+      zoom: mapZoom,
+      antialias: true // create the gl context with MSAA antialiasing, so custom layers are antialiased
+    });
+
+    // Add the control to the map.
+    initMap.addControl(
+      new MapboxGeocoder({
+          accessToken: mapboxgl.accessToken,
+          mapboxgl: mapboxgl
+      })
+    );
+    initMap.addControl(new mapboxgl.NavigationControl());
+    initMap.addControl(new mapboxgl.ScaleControl());
+    
+    initRangeMap.addControl(new mapboxgl.NavigationControl());
+    initRangeMap.addControl(new mapboxgl.ScaleControl());
+    
+
+
+    // eslint-disable-next-line no-undef
+    const tb = (window.tb = new Threebox(
+      initMap,
+      initMap.getCanvas().getContext('webgl'),
+      {
+        defaultLights: true, enableSelectingObjects: true, enableDraggingObjects: true, enableRotatingObjects: true, enableTooltips: true
+      }
+    ));
+    
+    tb.altitudeStep = 1.0;
+
+    setThreebox(tb)
+
+    createLaser(tb)
 
     initMap.on('load', () => {
       var camera = initMap.getFreeCameraOptions();
@@ -283,8 +308,14 @@ export default function RangefinderSimulator() {
     })
 
     setMap(initMap);
+    setRangeMap(initRangeMap)
 
-    return () => initMap.remove();
+    return () => {
+      try {
+      initMap.remove();
+      initRangeMap.remove();
+      } catch {}
+    }
   }, []);
 
   function calculateDestination(lat, lon, bearing, distance) {
@@ -413,6 +444,44 @@ export default function RangefinderSimulator() {
     setRangefinderScale(RANGEFINDER_INITIAL_SCALE)
     setRangefinderMaxRange(RANGEFINDER_INITIAL_MAX_RANGE)
   }
+  
+  const handleRangefinderDebugReset = (e) => {
+    createLaser(threebox)
+    // handleRangefinderReset()
+  }
+  
+  function getLaserEndCoordinates() {
+    // Get vertices from buffer geometry
+    const verticesFromGeometry = getVerticesFromBufferGeometry(laser.geometry);
+    return threebox.unprojectFromWorld(verticesFromGeometry[1]);
+  }
+  
+  function getLaserEndCoordinatesParams(laser, threebox) {
+    // Get vertices from buffer geometry
+    const verticesFromGeometry = getVerticesFromBufferGeometry(laser.geometry);
+    return threebox.unprojectFromWorld(verticesFromGeometry[1]);
+  }
+  
+  const handleRangefinderMarkMap = (e) => {
+    
+    if (rangefinderRange === 0)
+      return
+    
+    const laserEnd = getLaserEndCoordinates()
+    
+    // Create a popup for the tooltip
+    const popup = new mapboxgl.Popup({ offset: 25 }).setText(
+      "Lat: " + parseFloat(laserEnd[1]).toFixed(6) + " º " + 
+      "Lng: " + parseFloat(laserEnd[1]).toFixed(6) + " º " + 
+      "Alt: " + parseFloat(laserEnd[2]).toFixed(6) + " m " +
+      "Range: " + rangefinderRange + " m " // Replace with your tooltip text
+    );
+    
+    const marker2 = new mapboxgl.Marker({ color: 'red' })
+        .setLngLat([laserEnd[0], laserEnd[1]])
+        .setPopup(popup)
+        .addTo(map);
+  }
 
   const handleMapReset = (e) => {
     setMapCenter(MAP_INITIAL_CENTER)
@@ -502,6 +571,15 @@ export default function RangefinderSimulator() {
     const newAlt = startAlt + (altDiff * distance);
   
     return [newLng, newLat, newAlt];
+  }
+  
+  function setMapRangeCenterAndUpdateMap(laser, threebox, rangeMap) {
+    console.log("here")
+    const newLaserEnd = getLaserEndCoordinatesParams(laser, threebox)
+    setMapRangeCenter({lat: newLaserEnd[1], lng: newLaserEnd[0]})
+      rangeMap.jumpTo({
+        center: [newLaserEnd[0], newLaserEnd[1]]
+      })
   }
   
   function getInterpolatedIntersection(laser, laserStartVector3, laserEndVector3, laserStart, laserEnd, rangefinderMaxRange, map, threebox) {
@@ -599,12 +677,12 @@ export default function RangefinderSimulator() {
 
       const laserStart = threebox.unprojectFromWorld(verticesFromGeometry[0]);
       const laserEnd = threebox.unprojectFromWorld(verticesFromGeometry[1]);
-      // console.log("laserStart")
-      // console.log(laserStart)
       updateLinePositionDebounced.current([[laserStart[0], laserStart[1]], [laserEnd[0], laserEnd[1]]])
       
       setInterpolatedIntersectionDebounced.current(laser, verticesFromGeometry[0], verticesFromGeometry[1], laserStart, laserEnd, rangefinderMaxRange, map, threebox)
       
+      setMapRangeCenterDebounced.current(laser, threebox, rangeMap)
+
     }
   }, [rangefinderCoords, rangefinderRotation, rangefinderScale, rangefinderMaxRange]);
 
@@ -643,7 +721,9 @@ export default function RangefinderSimulator() {
     setPrevMapPitch(parseFloat(mapPitch).toFixed(6))
     setPrevMapBearing(parseFloat(mapBearing).toFixed(6))
     setDebugCounter(debugCounter + 1)
+    
   }, [mapCenter, mapZoom, mapPitch, mapBearing]);
+
 
   return (
     <div className='parent-div'>
@@ -662,7 +742,7 @@ export default function RangefinderSimulator() {
         <div className='label-control-pair altitude-pair'>
           <Form.Label>Altitude</Form.Label>
           <Form.Control value={mapAltitude} readOnly={true} />
-          <Form.Label>ꭩ</Form.Label>
+          <Form.Label className='meters-symbol-superscript'>m</Form.Label>
         </div>
         <div className='label-control-pair empty-label-margin-right'>
           <Form.Label>Zoom</Form.Label>
@@ -680,13 +760,13 @@ export default function RangefinderSimulator() {
           <Form.Label>º</Form.Label>
         </div>
         <div className='label-control-pair reset-button-pair empty-label-margin-right'>
-          <Form.Label className='reset-button-label'></Form.Label>
-          <Button variant="danger" onClick={handleMapReset}>Reset</Button>
+          <Form.Label className='action-button-label'></Form.Label>
+          <Button variant="primary" title='Moves the map to the rangefinder location' onClick={handleJumpToRangefinder}>Jump to Rangef.</Button>
           <Form.Label></Form.Label>
         </div>
         <div className='label-control-pair reset-button-pair empty-label-margin-right'>
-          <Form.Label className='reset-button-label'></Form.Label>
-          <Button variant="primary" onClick={handleJumpToRangefinder}>Jump to Rangef.</Button>
+          <Form.Label className='reset-button-label action-button-label'></Form.Label>
+          <Button variant="danger" title='Resets the map parameters' onClick={handleMapReset}>Reset</Button>
           <Form.Label></Form.Label>
         </div>
       </div>
@@ -705,7 +785,7 @@ export default function RangefinderSimulator() {
         <div className='label-control-pair altitude-pair'>
           <Form.Label>Altitude</Form.Label>
           <Form.Control type='number' min='0' max='10000' value={rangefinderCoords[2]} onChange={handleRangefinderCoordsInputChangeAlt} />
-          <Form.Label>ꭩ</Form.Label>
+          <Form.Label className='meters-symbol-superscript'>m</Form.Label>
         </div>
         <div className='label-control-pair'>
           <Form.Label>Rotation X</Form.Label>
@@ -725,12 +805,12 @@ export default function RangefinderSimulator() {
         <div className='label-control-pair altitude-pair'>
           <Form.Label>MaxRange</Form.Label>
           <Form.Control step="1.0" type='number' value={rangefinderMaxRange} onChange={handleRangefinderRangeInputChange} />
-          <Form.Label>ꭩ</Form.Label>
+          <Form.Label className='meters-symbol-superscript'>m</Form.Label>
         </div>
         <div className='label-control-pair altitude-pair'>
           <Form.Label>Range</Form.Label>
           <Form.Control step="0.000001" type='number' value={rangefinderRange} readOnly={true} />
-          <Form.Label>ꭩ</Form.Label>
+          <Form.Label className='meters-symbol-superscript'>m</Form.Label>
         </div>
         <div className='label-control-pair empty-label-margin-right'>
           <Form.Label>Scale</Form.Label>
@@ -738,18 +818,32 @@ export default function RangefinderSimulator() {
           <Form.Label></Form.Label>
         </div>
         <div className='label-control-pair reset-button-pair empty-label-margin-right'>
-          <Form.Label className='reset-button-label'></Form.Label>
-          <Button variant="danger" onClick={handleRangefinderReset}>Reset</Button>
+          <Form.Label className='action-button-label'></Form.Label>
+          <Button variant="success" title="Sets a coordinate marker at the current range measurement" onClick={handleRangefinderMarkMap}>Mark Map</Button>
           <Form.Label></Form.Label>
         </div>
         <div className='label-control-pair reset-button-pair empty-label-margin-right'>
-          <Form.Label className='reset-button-label'></Form.Label>
-          <Button variant="primary" onClick={handleRangefinderJumpToMap}>Jump To Map</Button>
+          <Form.Label className='action-button-label'></Form.Label>
+          <Button variant="primary" title='Moves the rangefinder to the map location' onClick={handleRangefinderJumpToMap}>Jump To Map</Button>
+          <Form.Label></Form.Label>
+        </div>
+        <div className='label-control-pair reset-button-pair empty-label-margin-right'>
+          <Form.Label className='reset-button-label action-button-label'></Form.Label>
+          <Button variant="danger" title="Resets the parameters of the rangefinder" onClick={handleRangefinderReset}>Reset</Button>
+          <Form.Label></Form.Label>
+        </div>
+        <div className='label-control-pair reset-button-pair empty-label-margin-right'>
+          <Form.Label className='reset-button-label action-button-label'></Form.Label>
+          <Button variant="warning" title='Resets the rangefinder code objects' onClick={handleRangefinderDebugReset}>Reset Laser</Button>
           <Form.Label></Form.Label>
         </div>
       </div>
       <div className='mapBoxGl1-wrapper'>
         <div ref={mapContainerRef} className="mapBox-container-1"></div>
+      </div>
+      <div className='mapBoxGl1-wrapper'>
+        <h1 className='map-title-overlay'>Ranged View</h1>
+        <div ref={mapContainerRangeRef} className="mapBox-container-2"></div>
       </div>
     </div>
 
