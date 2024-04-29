@@ -1,10 +1,27 @@
+.top-level-container {
+  display: flex;
+  flex-direction: column;
+  
+  > .main-navbar {
+    
+  }
+}
+
+
+
 .parent-div {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    align-items: flex-start;
     gap: .5rem;
-    margin-top: 48px
+    margin-top: 48px;
+    
+    > .sim-pair-wrapper {
+      gap: .5rem;
+      display: flex;
+      display: row;
+      flex-wrap: wrap;
+    }
 }
 
 .canvas-container {
@@ -16,8 +33,10 @@
 .mapBox-container-1, .mapBox-container-2 {
     height: 512px;
     width: 512px;
+    border: 2px solid black;
 }
 .mapBoxGl1-wrapper {
+   overflow: hidden;
     position: relative;
 }
 
@@ -78,21 +97,6 @@
     > .action-button-label {
         flex-grow: 0 !important;
       }
-      
-    > .reset-button-label {
-    background: red;
-    margin-bottom: 0;
-    -webkit-background-size: 50px 50px;
-    -moz-background-size: 50px 50px;
-    background-size: 50px 50px;
-    background-color: white;
-    background-image: -webkit-gradient(linear, 0 0, 100% 100%, color-stop(.25, goldenrod), color-stop(.25, black), color-stop(.5, black), color-stop(.5, goldenrod), color-stop(.75, goldenrod), color-stop(.75, black), to(black));
-    background-image: -webkit-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
-    background-image: -moz-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
-    background-image: -ms-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
-    background-image: -o-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
-    background-image: linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
-    }
   }
   
   .label-control-pair.reset-button-pair {
@@ -129,7 +133,56 @@
   
 .map-title-overlay {
     position: absolute;
+    margin-top: 2px;
+    margin-left: 2px;
     top: 0;
+    font-size: 1rem;
+    font-weight: bold;
+    padding: 2px;
     z-index: 100;
     background: white;
 }
+
+.reset-button-label {
+  background: red;
+  margin-bottom: 0 !important;
+  -webkit-background-size: 50px 50px;
+  -moz-background-size: 50px 50px;
+  background-size: 50px 50px;
+  background-color: white;
+  background-image: -webkit-gradient(linear, 0 0, 100% 100%, color-stop(.25, goldenrod), color-stop(.25, black), color-stop(.5, black), color-stop(.5, goldenrod), color-stop(.75, goldenrod), color-stop(.75, black), to(black));
+  background-image: -webkit-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
+  background-image: -moz-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
+  background-image: -ms-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
+  background-image: -o-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
+  background-image: linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
+  }
+  
+  .reset-button-label-settings {
+    background: red;
+    margin-bottom: 0 !important;
+    -webkit-background-size: 12px 12px;
+    -moz-background-size: 12px 12px;
+    background-size: 12px 12px;
+    background-color: white;
+    background-image: -webkit-gradient(linear, 0 0, 100% 100%, color-stop(.25, goldenrod), color-stop(.25, black), color-stop(.5, black), color-stop(.5, goldenrod), color-stop(.75, goldenrod), color-stop(.75, black), to(black));
+    background-image: -webkit-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
+    background-image: -moz-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
+    background-image: -ms-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
+    background-image: -o-linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
+    background-image: linear-gradient(-45deg, goldenrod 25%, black 25%, black 50%, goldenrod 50%, goldenrod 75%, black 75%, black);
+    }
+  
+  .settings-warning {
+    display: inline-block;
+    width: 25px;
+    height: 25px;
+    border-radius: 10%;
+  }
+  
+  .settings-with-warning {
+    display: flex !important;
+    gap: .5rem;
+  }
+  
+.hidden { display:none !important; }
