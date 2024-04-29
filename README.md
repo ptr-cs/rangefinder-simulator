@@ -2,13 +2,13 @@
 
 Rangefinder simulator.
 
+![rangefinder-simulator-demo3](https://github.com/ptr-cs/rangefinder-simulator/assets/112029487/b8000368-9770-4828-be42-b7e4017dc79c)
+
 A virtual rangefinder that displays a measurement range on a 3D map is implemented using Mapbox GL, Threebox, and React. The purpose of the app is to calculate the distance and coordinates of a map intersection with an endpoint in 3D space extending a from the 3D position of an observer. Both the map and rangefinder are able to be controlled either via direct manipulation using the mouse or via text inputs bound to position and rotation parameters.
 
 Rangefinder model is courtesy of Kenny.nl 3D assets colleciton: https://kenney.nl/assets?q=3d
 
-![rangefinder-simulator-demo3](https://github.com/ptr-cs/rangefinder-simulator/assets/112029487/b8000368-9770-4828-be42-b7e4017dc79c)
-
-![image](https://github.com/ptr-cs/rangefinder-simulator/assets/112029487/50b3714b-e3d3-4766-9e5f-9ca9992c19fe)
+![image](https://github.com/ptr-cs/rangefinder-simulator/assets/112029487/2e4770ae-d0df-41a4-807a-912b1e7c749d)
 
 ## Installing and launching the application
 
